@@ -2,78 +2,90 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HopDong;
+use App\Models\Phong;
 use App\Models\SinhVien;
+use App\Models\YKien;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SinhVienVController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function hienthisinhvien()
     {
-         
-        return SinhVien::all();
+        return SinhVien::orderBy('TenSV', 'asc')->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)  
-    {  
-        $request->validate([  
-            'MaSV' => 'required|string|max:10',  
-            'TenSV' => 'required|string|max:30',  
-            'NgaySinh' => 'required|date',  
-            'SDT' => 'required|string|max:10',  
-            'DiaChi' => 'nullable|string|max:50',  
-            'MaPhong' => 'nullable|string|max:10',  
-        ]);  
+    public function themsinhvien(Request $request)
+    {
+        $sinhvien = SinhVien::where('MaSV', $request->MaSV)->first();
+        $phong = Phong::where('MaPhong',$request->MaPhong)->first();
+        $slnow = SinhVien::where('MaPhong',$request->MaPhong)->count();
+        if ($sinhvien) {
+            return response()->json([], 404);
+        }
+        if(!$phong || $slnow == $phong->SoLuongMax){
+            $request['MaPhong'] = 'PhongCho';
+        }
+        SinhVien::create($request->all());
+        $phong = Phong::where('MaPhong',$request->MaPhong)->first();
+        $slmax = $phong->SoLuongMax;
+        $sl = SinhVien::where('MaPhong',$request->MaPhong)->count();
+        $trong = $slmax - $sl;
+        Phong::where('MaPhong',$request->MaPhong)->update(['trangthai'=>$trong]);
+        return response()->json([], 200);
+    }
 
-        $sinhVien = SinhVien::create($request->all());  
-        return response()->json($sinhVien, 201);  
-    }  
+    public function timsinhvien($MaSV)
+    {
+        $tontai = SinhVien::where('MaSV', 'like', "%$MaSV%")
+        ->orderByRaw('MaSV ASC')
+        ->get();
+        if ($tontai->isNotEmpty()) {
+            return response()->json($tontai, 200);
+        }
+        return response()->json([], 404);
+    }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show($MaSV)  
-    {  
-        return SinhVien::findOrFail($MaSV);  
-    }  
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $MaSV)  
-    {  
-        $request->validate([  
-            'MaSV' => 'nullable|string|max:10',  
-            'TenSV' => 'nullable|string|max:30',  
-            'NgaySinh' => 'nullable|date',  
-            'SDT' => 'nullable|string|max:10',  
-            'DiaChi' => 'nullable|string|max:50',  
-            'MaPhong' => 'nullable|string|max:10',  
-        ]);  
+    public function suasinhvien(Request $request, $MaSV)
+    {
+        $sinhvien = SinhVien::where('MaSV', $MaSV)->first();
+        $phong = Phong::where('MaPhong',$request->MaPhong)->first();
+        $slnow = SinhVien::where('MaPhong',$request->MaPhong)->count();
+        if ($sinhvien) { //xem sv chọn có tồn tại ko
+            $sinhvienold = $sinhvien->MaSV; // lưu lại mã sv cũ
+            
+            if ($sinhvienold != $request->MaSV  && $request->has('MaSV')) {
+                YKien::where('MaSV', $MaSV)->update(['MaSV' => $request->MaSV]);
+                HopDong::where('MaSV', $MaSV)->update(['MaSV' => $request->MaSV]);
+            }
+            if(!$phong || $slnow == $phong->SoLuongMax){
+                $request['MaPhong'] = 'PhongCho';
+            }
+            $sinhvien->update($request->all());
+            $phong = Phong::where('MaPhong',$request->MaPhong)->first();
+            $slmax = $phong->SoLuongMax;
+            $sl = SinhVien::where('MaPhong',$request->MaPhong)->count();
+            $trong = $slmax - $sl;
+            Phong::where('MaPhong',$request->MaPhong)->update(['trangthai'=>$trong]);
+            return response()->json([], 200);
+        }
+        return response()->json([], 400);
+    }
 
-        $sinhVien = SinhVien::findOrFail($MaSV);  
-        $sinhVien->update($request->all());  
-        return response()->json($sinhVien, 200);  
-    }  
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($MaSV)
+    public function xoasinhvien($MaSV)
     {
         $sinhVien = SinhVien::where('MaSV', $MaSV)->first();
-    
+        $phong = Phong::where('MaPhong',$sinhVien->MaPhong)->first();
         if ($sinhVien) {
             $sinhVien->delete(); // Xóa sinh viên
-            return response()->json(['message' => 'Xóa thành công']);
+            $sl = SinhVien::where('MaPhong',$phong->MaPhong)->count();
+            $slmax = $phong->SoLuongMax;
+            $trong = $slmax - $sl;
+            Phong::where('MaPhong',$sinhVien->MaPhong)->update(['trangthai'=>$trong]);
+            return response()->json([$sl,$slmax,$trong], 200);
         }
-    
-        return response()->json(['message' => 'Không tìm thấy sinh viên'], 404);
+        return response()->json([], 404);
     }
-     
 }

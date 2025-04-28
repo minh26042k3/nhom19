@@ -2,68 +2,67 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HoaDon;
+use App\Models\NoiThat;
 use App\Models\Phong;
+use App\Models\SinhVien;
 use Illuminate\Http\Request;
 
 class PhongController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function hienthiphong()
     {
-        return Phong::all(); 
+        return Phong::orderByRaw('Tang ASC')
+        ->orderByRaw('MaPhong ASC')
+        ->get();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function themphong(Request $request)
     {
-        $request->validate([  
-            'MaPhong' => 'required|string|max:10' ,
-            'SoLuongMax' =>'required|int' 
-        ]);  
-
-        $phong = Phong::create($request->all());  
-        return response()->json($phong, 201); 
+        $phong = Phong::where('MaPhong',$request->MaPhong)->first();
+        if($phong){
+            return response()->json([],404);
+        }
+        $request['TrangThai'] = $request->SoLuongMax;
+        Phong::create($request->all());  
+        return response()->json($phong, 200); 
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $MaPhong)
+    public function timphong(string $MaPhong)
     {
-        return Phong::findOrFail($MaPhong);
+        $phong = Phong::where('MaPhong','like',"%$MaPhong%")
+        ->orderByRaw('MaPhong ASC')
+        ->get();
+        if($phong){
+            return response()->json($phong,200);
+        }
+        return response()->json([],404);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $MaPhong)
+    public function suaphong (Request $request, string $MaPhong)
     {
-        $request->validate([  
-            'MaPhong' => 'nullable|string|max:10' ,
-            'SoLuongMax' =>'required|int' 
-        ]);  
-
-        $phong = Phong::findOrFail($MaPhong);  
-        $phong->update($request->all());  
-        return response()->json($phong, 200);  
+        $phong = Phong::where("MaPhong",$MaPhong)->first();
+        $maphongold = $MaPhong;
+        if($phong){
+            if($maphongold != $request->MaPhong && $request->has('MaPhong')){
+                SinhVien::where('MaPhong', $maphongold)->update(['MaPhong'=>$request->MaPhong]);
+                NoiThat::where('MaPhong', $maphongold)->update(['MaPhong'=>$request->MaPhong]);
+                HoaDon::where('MaPhong',$maphongold)->update(['MaPhong'=>$request->MaPhong]);
+            }
+            $phong->update($request->all());
+            return response()->json([],200);
+        }
+        return response()->json([], 404);  
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $MaPhong)
+    public function xoaphong(string $MaPhong)
     {
         $phong = Phong::where('MaPhong', $MaPhong)->first();
     
         if ($phong) {
-            $phong->delete(); // Xóa sinh viên
-            return response()->json(['message' => 'Xóa thành công']);
+            $phong->delete(); 
+            return response()->json([],200);
         }
-    
-        return response()->json(['message' => 'Không tìm thấy Phòng'], 404);
+        return response()->json([], 404);
     }
 }

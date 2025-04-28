@@ -2,47 +2,54 @@
 
 namespace App\Http\Controllers;
 use App\Models\BaoTri;
+use App\Models\ChiTietBaoTri;
+use App\Models\NoiThat;
 
 use Illuminate\Http\Request;
-
 class BaotriController extends Controller
 {
     public function index()
     {
-        $baotri = BaoTri::all();
-        return response()->json($baotri);
+        return response()->json(BaoTri::all());
+    }
+
+    public function show($SoHieuBT)
+    {
+        $ds = BaoTri::where('SoHieuBT', 'like', "%$SoHieuBT%")->get();
+        if ($ds) {
+            return response()->json($ds);
+        }
+        return response()->json([], 404);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'SoHieuBT' => 'required',
-            'TenLoaiBaoTri' => 'required',
-            'PhiBT' => 'required|numeric'
-        ]);
-
-        $baotri = BaoTri::create($request->all());
-        return response()->json($baotri, 201);
+        $soHieuBT = BaoTri::where('SoHieuBT',$request->SoHieuBT)->first();
+       
+        if ($soHieuBT ) {
+            return response()->json([], 404);
+        }
+        BaoTri::create($request->only(['SoHieuBT', 'GhiChu', 'PhiBT','NgayBaoTri']));
+        return response()->json([], 200);
     }
 
-    public function update(Request $request, $SoHieuBT)
+    public function update(Request $request, string $SoHieuBT)
     {
-        $request->validate([
-            'TenLoaiBaoTri' => 'required',
-            'PhiBT' => 'required|numeric'
-        ]);
-
-        $baotri = BaoTri::findOrFail($SoHieuBT);
-        $baotri->update($request->all());
-
-        return response()->json($baotri);
+        $bt = BaoTri::find($SoHieuBT);
+        if (!$bt) {
+            return response()->json([], 404);
+        }
+        $bt->update($request->all());
+        return response()->json([], 200);
     }
 
-    public function destroy($SoHieuBT)
+    public function destroy(string $SoHieuBT)
     {
-        $baotri = Baotri::findOrFail($SoHieuBT);
-        $baotri->delete();
-
-        return response()->json(['message' => 'Xóa bảo trì thành công']);
+        if (!BaoTri::find($SoHieuBT)) {
+            return response()->json([], 404);
+        }
+        BaoTri::destroy($SoHieuBT);
+        ChiTietBaoTri::where('SoHieuBT',$SoHieuBT)->delete();
+        return response()->json([], 200);
     }
 }

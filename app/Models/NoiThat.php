@@ -11,7 +11,7 @@ class NoiThat extends Model
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = false;
-    protected $fillable = ['MaNT', 'TenNT', 'MaPhong'];
+    protected $fillable = ['MaNT', 'TenNT','NgayNhap', 'MaPhong'];
     public function phong()
     {
         return $this->belongsTo(Phong::class, 'MaPhong', 'MaPhong');

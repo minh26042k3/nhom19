@@ -12,6 +12,6 @@ class BaoTri extends Model
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = false;
-    protected $fillable = ['SoHieuBT', 'TenLoaiBaoTri', 'PhiBT'];
+    protected $fillable = ['SoHieuBT', 'GhiChu', 'PhiBT','NgayBaoTri'];
 
 }
